@@ -5,15 +5,16 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace gameoflife
+namespace gol5
 {
     public partial class Form1 : Form
     {
         int mX = 500;
         int mY = 250;
-        int scale=3;
+        int scale = 3;
 
         SolidBrush BrushBlack;
         SolidBrush BrushWhite;
@@ -21,42 +22,44 @@ namespace gameoflife
         BufferedGraphics myBuffer;
 
         int[,] boardCache;
+
+        Task worker;
+        System.Threading.CancellationTokenSource tokenSource;
+        System.Threading.CancellationToken token;
+
         public Form1()
         {
             InitializeComponent();
         }
 
-        private void startToolStripMenuItem_Click(object sender, EventArgs e)
+        public  void DoWork()
         {
 
-
-           // this.DoubleBuffered = true;
-
-            int[,] board = Init();
-            
-            Random r=new Random();
-            //create random board
-            for (int x = 0; x < mX; x++)
+            for (int gen = 0; gen < 10000; gen++)
             {
-                for (int y = 0; y < mY; y++)
-                {
+                if (token.IsCancellationRequested)
+                    return;
 
-                    board[x, y] = r.Next(0, 2);
-                }
+                Generate(boardCache);
+               
             }
 
-            Run(board);
+         
         }
 
         private void Run(int[,] board)
         {
-            
+
 
             boardCache = board;
 
             DrawBoard(boardCache);
 
-            backgroundWorker1.RunWorkerAsync();
+            tokenSource = new System.Threading.CancellationTokenSource();
+            token= tokenSource.Token;
+            worker =Task.Run(()=>DoWork(),token );
+
+         
 
         }
 
@@ -73,10 +76,10 @@ namespace gameoflife
             return board;
         }
 
-        public void DrawBoard( int[,] b)
+        public void DrawBoard(int[,] b)
         {
             myBuffer.Graphics.Clear(Color.WhiteSmoke);
-         
+
 
             for (int x = 0; x < mX; x++)
             {
@@ -95,65 +98,65 @@ namespace gameoflife
             }
 
             myBuffer.Render();
-            
+
         }
 
         public void Generate(int[,] b)
         {
             int[,] board = new int[mX, mY];
             int t = 0;
-            for (int x = 1; x < mX-1; x++)
+            for (int x = 1; x < mX - 1; x++)
             {
-                for (int y = 1; y < mY-1; y++)
+                for (int y = 1; y < mY - 1; y++)
                 {
                     t = b[x - 1, y - 1];
-                    t += b[x - 1, y ];
-                    t += b[x - 1, y+1];
-                    t += b[x , y-1];
-                    t += b[x , y+1];
-                    t += b[x + 1, y-1];
+                    t += b[x - 1, y];
+                    t += b[x - 1, y + 1];
+                    t += b[x, y - 1];
+                    t += b[x, y + 1];
+                    t += b[x + 1, y - 1];
                     t += b[x + 1, y];
-                    t += b[x + 1, y+1];
+                    t += b[x + 1, y + 1];
 
                     if (b[x, y] == 0 & t == 3)
                         board[x, y] = 1;
-                    else if(b[x,y]==1 & (t==2 | t==3))
+                    else if (b[x, y] == 1 & (t == 2 | t == 3))
                         board[x, y] = 1;
                 }
             }
 
             boardCache = board;
             //panel1.Refresh();
-            DrawBoard( boardCache);
-            
+            DrawBoard(boardCache);
+
         }
 
-        private void panel1_Paint(object sender, PaintEventArgs e)
+        private void mnuStart_Click(object sender, EventArgs e)
         {
-            if (boardCache != null)
-            {
-                //e.Graphics.Clear(Color.White);
+            // this.DoubleBuffered = true;
 
-                //DrawBoard(e.Graphics, boardCache);
-
-                
-            }
-        }
-
-        private void rpentominoToolStripMenuItem_Click(object sender, EventArgs e)
-        {
             int[,] board = Init();
 
-            board[100, 100] = 1;
-            board[101, 100] = 1;
-            board[101, 99] = 1;
-            board[102, 99] = 1;
-            board[101, 101] = 1;
+            Random r = new Random();
+            //create random board
+            for (int x = 0; x < mX; x++)
+            {
+                for (int y = 0; y < mY; y++)
+                {
+
+                    board[x, y] = r.Next(0, 2);
+                }
+            }
 
             Run(board);
         }
 
-        private void gliderGunToolStripMenuItem_Click(object sender, EventArgs e)
+        private void mnuStop_Click(object sender, EventArgs e)
+        {
+            tokenSource.Cancel();
+        }
+
+        private void mnuGlider_Click(object sender, EventArgs e)
         {
             int[,] board = Init();
 
@@ -205,21 +208,21 @@ namespace gameoflife
             board[134, 99] = 1;
             board[135, 98] = 1;
             board[135, 99] = 1;
-            
+
             Run(board);
         }
 
-        private void infinteToolStripMenuItem_Click(object sender, EventArgs e)
+        private void mnuInfinite_Click(object sender, EventArgs e)
         {
             int[,] board = Init();
 
             board[99, 100] = 1;
-            
+
             board[101, 100] = 1;
             board[101, 99] = 1;
-            
+
             board[103, 98] = 1;
-            board[103,97] = 1;
+            board[103, 97] = 1;
             board[103, 96] = 1;
 
             board[105, 97] = 1;
@@ -228,34 +231,26 @@ namespace gameoflife
 
             board[106, 96] = 1;
 
-         
+
             Run(board);
         }
 
-        private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
+        private void mnuPent_Click(object sender, EventArgs e)
         {
-            for (int gen = 0; gen < 10000; gen++)
-            {
-                //  System.Threading.Thread.Sleep(10);
-                if (backgroundWorker1.CancellationPending)
-                {
-                    e.Cancel = true;
-                    return;
-                }
-                else
-                {
-                    Generate(boardCache);
-                }
-            }
+            int[,] board = Init();
 
+            board[100, 100] = 1;
+            board[101, 100] = 1;
+            board[101, 99] = 1;
+            board[102, 99] = 1;
+            board[101, 101] = 1;
+
+            Run(board);
         }
 
-        private void stopToolStripMenuItem_Click(object sender, EventArgs e)
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            backgroundWorker1.CancelAsync();
+            tokenSource.Cancel();
         }
-
-       
-     
     }
 }
